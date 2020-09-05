@@ -16,16 +16,17 @@
 package com.keylesspalace.tusky.db
 
 import androidx.room.*
+import io.reactivex.Single
 
 @Dao
 interface AccountDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertOrReplace(account: AccountEntity): Long
+    fun insertOrReplace(account: AccountEntity): Single<Long>
 
     @Delete
     fun delete(account: AccountEntity)
 
     @Query("SELECT * FROM AccountEntity ORDER BY id ASC")
-    fun loadAll(): List<AccountEntity>
+    fun loadAll(): Single<List<AccountEntity>>
 
 }

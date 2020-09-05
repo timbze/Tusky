@@ -18,6 +18,7 @@ package com.keylesspalace.tusky.db
 import android.util.Log
 import com.keylesspalace.tusky.entity.Account
 import com.keylesspalace.tusky.entity.Status
+import io.reactivex.schedulers.Schedulers
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,11 +41,16 @@ class AccountManager @Inject constructor(db: AppDatabase) {
     private val accountDao: AccountDao = db.accountDao()
 
     init {
-        accounts = accountDao.loadAll().toMutableList()
+        val disposable = accountDao.loadAll()
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .subscribe { accounts ->
+                    this.accounts = accounts.toMutableList()
 
-        activeAccount = accounts.find { acc ->
-            acc.isActive
-        }
+                    activeAccount = accounts.find { acc ->
+                        acc.isActive
+                    }
+                }
     }
 
     /**
@@ -60,7 +66,7 @@ class AccountManager @Inject constructor(db: AppDatabase) {
             it.isActive = false
             Log.d(TAG, "addAccount: saving account with id " + it.id)
 
-            accountDao.insertOrReplace(it)
+            accountDao.insertOrReplace(it).subscribeOn(Schedulers.io()).subscribe()
         }
 
         val maxAccountId = accounts.maxBy { it.id }?.id ?: 0
@@ -77,7 +83,7 @@ class AccountManager @Inject constructor(db: AppDatabase) {
     fun saveAccount(account: AccountEntity) {
         if (account.id != 0L) {
             Log.d(TAG, "saveAccount: saving account with id " + account.id)
-            accountDao.insertOrReplace(account)
+            accountDao.insertOrReplace(account).subscribeOn(Schedulers.io()).subscribe()
         }
 
     }
@@ -98,7 +104,7 @@ class AccountManager @Inject constructor(db: AppDatabase) {
                 accounts[0].isActive = true
                 activeAccount = accounts[0]
                 Log.d(TAG, "logActiveAccountOut: saving account with id " + accounts[0].id)
-                accountDao.insertOrReplace(accounts[0])
+                accountDao.insertOrReplace(accounts[0]).subscribeOn(Schedulers.io()).subscribe()
             } else {
                 activeAccount = null
             }
@@ -124,7 +130,7 @@ class AccountManager @Inject constructor(db: AppDatabase) {
             it.emojis = account.emojis ?: emptyList()
 
             Log.d(TAG, "updateActiveAccount: saving account with id " + it.id)
-            it.id = accountDao.insertOrReplace(it)
+            accountDao.insertOrReplace(it).subscribeOn(Schedulers.io()).subscribe()
 
             val accountIndex = accounts.indexOf(it)
 
@@ -157,7 +163,7 @@ class AccountManager @Inject constructor(db: AppDatabase) {
 
         activeAccount?.let {
             it.isActive = true
-            accountDao.insertOrReplace(it)
+            accountDao.insertOrReplace(it).subscribeOn(Schedulers.io()).subscribe()
         }
     }
 
